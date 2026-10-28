@@ -1,0 +1,38 @@
+# application-prod.yml
+spring:
+  redis:
+    host: ${REDIS_HOST:127.0.0.1}
+    port: ${REDIS_PORT:6379}
+    password: ${REDIS_PASSWORD:}
+    database: 0
+    timeout: 5000ms
+    lettuce:
+      pool:
+        max-active: 20
+        max-idle: 10
+        min-idle: 5
+
+rocketmq:
+  name-server: ${ROCKETMQ_NAMESRV:127.0.0.1:9876}
+  producer:
+    group: pro_study_group
+    send-message-timeout: 5000
+    retry-times-when-send-failed: 2
+    retry-times-when-send-async-failed: 2
+    max-message-size: 4194304
+    compress-message-body-threshold: 4096
+    enable-msg-trace: true
+    customized-trace-topic: rmq_trace_topic
+
+  consumer:
+    pull-batch-size: 32
+    consume-thread-max: 32
+    consume-timeout: 15
+
+logging:
+  level:
+    com.example.rocketmq: INFO
+    org.apache.rocketmq: WARN
+  file:
+    path: /var/log/rocketmq-demo
+    name: /var/log/rocketmq-demo/mq-consumer.log

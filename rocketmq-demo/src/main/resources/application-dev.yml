@@ -1,0 +1,27 @@
+# ============================================================
+# 开发环境配置文件
+# 特点：本地服务、详细日志、便于调试
+# ============================================================
+
+# 开发环境使用本地服务
+spring:
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+rocketmq:
+  name-server: 127.0.0.1:9876
+
+# 日志级别DEBUG
+logging:
+  level:
+    com.example.rocketmq: DEBUG
+    org.apache.rocketmq: DEBUG
+
+# 开发环境暴露所有监控端点
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"

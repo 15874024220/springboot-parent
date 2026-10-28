@@ -1,0 +1,153 @@
+# ============================================================
+# SpringBoot 3.2.4 主配置文件
+# ============================================================
+
+# Spring核心配置
+spring:
+  # 应用名称
+  application:
+    name: rocketmq-springboot3-demo
+
+  # 环境选择（dev:开发环境, test:测试环境, prod:生产环境）
+  profiles:
+    active: dev
+
+  # 数据源配置（使用HikariCP连接池）
+  datasource:
+    url: jdbc:mysql://localhost:3306/production_db_test?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull
+    username: admin_user
+    password: Admin@Password2024!
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    type: com.zaxxer.hikari.HikariDataSource
+    hikari:
+      pool-name: HikariPool
+      minimum-idle: 5                    # 最小空闲连接数
+      maximum-pool-size: 20              # 最大连接池大小
+      connection-timeout: 30000          # 连接超时时间（毫秒）
+      idle-timeout: 600000               # 空闲连接超时时间
+      max-lifetime: 1800000              # 连接最大存活时间
+      connection-test-query: SELECT 1    # 连接测试查询
+      validation-timeout: 5000           # 验证超时时间
+
+  # Redis配置（用于幂等性校验和分布式锁）
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password:
+      database: 0                        # 使用哪个数据库
+      timeout: 5000ms                    # 连接超时时间
+      lettuce:
+        pool:
+          max-active: 20                 # 最大活跃连接数
+          max-idle: 10                   # 最大空闲连接数
+          min-idle: 5                    # 最小空闲连接数
+          max-wait: -1ms                 # 获取连接的最大等待时间
+
+  # Jackson JSON配置
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss     # 日期格式
+    time-zone: Asia/Shanghai             # 时区
+    default-property-inclusion: non_null # 不序列化null值
+    serialization:
+      write-dates-as-timestamps: false   # 日期不写为时间戳
+      indent-output: false               # 不美化输出
+    deserialization:
+      fail-on-unknown-properties: false  # 忽略未知属性
+
+# ============================================================
+# RocketMQ 配置
+# ============================================================
+rocketmq:
+  # NameServer地址（dev环境使用本地，生产环境配置多个，分号分隔）
+  name-server: 127.0.0.1:9876
+
+  # 生产者配置
+  producer:
+    group: order_producer_group          # 生产者组名（必填）
+    send-message-timeout: 3000           # 发送超时时间（毫秒）
+    max-message-size: 4194304            # 最大消息大小（4M）
+    retry-times-when-send-failed: 2      # 同步发送失败重试次数
+    retry-times-when-send-async-failed: 2 # 异步发送失败重试次数
+    enable-msg-trace: true               # 开启消息轨迹（生产环境强烈建议）
+    customized-trace-topic: rmq_trace_topic  # 消息轨迹Topic
+    vip-channel-enabled: false           # 关闭VIP通道（避免防火墙问题）
+    compress-message-body-threshold: 4096  # 超过4K自动压缩
+
+  # 消费者配置（全局默认）
+  consumer:
+    pull-batch-size: 32                  # 单次拉取消息数量
+    consume-thread-max: 20               # 消费线程池大小
+    consume-timeout: 15                  # 消费超时时间（分钟）
+    max-reconsume-times: 3               # 最大重试次数，超过进死信队列
+    enable-msg-trace: true                    # 消费者也支持消息轨迹
+    customized-trace-topic: rmq_trace_topic
+    # 错误处理配置
+    error-handler:
+      enabled: true                    # 是否启用自定义错误处理器
+      max-retry-times: 3               # 最大重试次数
+      enable-alert: true               # 是否发送告警
+      alert-threshold: 2               # 重试多少次后告警
+      dead-letter-enabled: true        # 是否启用死信表
+
+      # 重试策略
+      retry-strategy:
+        type: EXPONENTIAL               # 重试策略：FIXED/EXPONENTIAL
+        initial-delay: 5000             # 初始延迟（毫秒）
+        max-delay: 60000                # 最大延迟（毫秒）
+
+# ============================================================
+# MyBatis-Plus 配置
+# ============================================================
+mybatis-plus:
+  mapper-locations: classpath*:mapper/**/*.xml
+  type-aliases-package: com.example.rocketmq.domain.entity
+  global-config:
+    db-config:
+      id-type: auto                      # 主键类型（数据库自增）
+      logic-delete-field: deleted        # 逻辑删除字段名
+      logic-delete-value: 1              # 逻辑已删除值
+      logic-not-delete-value: 0          # 逻辑未删除值
+      table-underline: true              # 表名驼峰转下划线
+    banner: false                        # 关闭控制台Banner
+  configuration:
+    map-underscore-to-camel-case: true   # 开启驼峰命名
+    cache-enabled: false                 # 关闭二级缓存
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+
+# ============================================================
+# 业务自定义配置
+# ============================================================
+order:
+  topic: order_topic                     # 订单消息Topic
+  normal-tag: normal                     # 普通消息标签
+  orderly-tag: orderly                   # 顺序消息标签
+  transaction-tag: transaction           # 事务消息标签
+
+# ============================================================
+# 日志配置
+# ============================================================
+logging:
+  level:
+    com.example.rocketmq: DEBUG
+    org.apache.rocketmq: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+
+# ============================================================
+# 监控配置（Spring Boot Actuator）
+# ============================================================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: always
+    metrics:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}

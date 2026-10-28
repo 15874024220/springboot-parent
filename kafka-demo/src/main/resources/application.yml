@@ -1,0 +1,140 @@
+# 主配置文件
+spring:
+  profiles:
+    active: dev  # 关键：指定使用 dev 环境
+
+  application:
+    name: kafka-demo
+
+  # Kafka 核心配置
+  kafka:
+    # Kafka 服务器地址（生产环境建议使用域名）
+#    bootstrap-servers: localhost:9092,localhost:9093,localhost:9094
+    bootstrap-servers: localhost:9092
+
+    # ==================== 生产者配置 ====================
+    producer:
+      # 序列化器配置
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+
+      # 重要：重试次数（生产环境建议3-5次）
+      retries: 3
+      # 重试退避时间（毫秒）
+      retry-backoff-ms: 1000
+
+      # 批量发送配置（提高吞吐量）
+      batch-size: 16384      # 16KB 批量大小
+      buffer-memory: 33554432 # 32MB 缓冲区
+      linger-ms: 10          # 延迟发送时间（毫秒）
+
+      # 压缩类型：支持 none,gzip,snappy,lz4,zstd（推荐 snappy 或 lz4）
+      compression-type: snappy
+
+      # 幂等性生产者配置（防止消息丢失和重复）
+      properties:
+        enable:
+          idempotence: true
+        # 生产环境建议配置为 all（最严格）
+        acks: all
+        # 最大请求大小（1MB）
+        max:
+          request:
+            size: 1048576
+
+    # ==================== 消费者配置 ====================
+    consumer:
+      # 消费者组ID（同一个组的消费者共同消费消息）
+      group-id: ${spring.application.name}-group
+      # 自动重置偏移量（earliest：从头开始，latest：从最新开始）
+      auto-offset-reset: earliest
+      # 重要：关闭自动提交，改为手动提交（防止重复消费）
+      enable-auto-commit: false
+      # 自动提交间隔（仅在 enable-auto-commit=true 时生效）
+      auto-commit-interval: 1000
+
+      # 反序列化器配置
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+
+      properties:
+        # 信任所有包（用于 JsonDeserializer）
+        spring.json.trusted.packages: '*'
+        # 最大轮询间隔（毫秒），超过会触发 Rebalance
+        max:
+          poll:
+            # 最大拉取记录数（防止一次拉取过多导致超时）
+            records: 100
+            # 最大轮询间隔（毫秒），超过会触发 Rebalance
+            interval:
+              ms: 300000
+        # 会话超时时间（毫秒）
+        session:
+          timeout:
+            ms: 45000
+        # 心跳间隔（毫秒）
+        heartbeat:
+          interval:
+            ms: 3000
+
+    # ==================== 监听器配置 ====================
+    listener:
+      # 手动提交确认模式（MANUAL_IMMEDIATE：立即手动提交）
+      ack-mode: manual_immediate
+      # 并发数（根据分区数设置，不能超过分区数）
+      concurrency: 3
+      # 缺失主题时自动创建
+      missing-topics-fatal: false
+      # 重试配置
+      retry:
+        # 最大重试次数
+        max-attempts: 3
+        # 重试间隔
+        initial-interval: 1000
+        # 重试间隔倍数
+        multiplier: 2
+        # 最大间隔
+        max-interval: 10000
+
+# 自定义业务配置
+kafka:
+  # 主题配置
+  topics:
+    normal: "normal-topic"          # 普通消息主题
+    ordered: "ordered-topic"        # 顺序消息主题
+    transactional: "transactional-topic"  # 事务消息主题
+    dead-letter: "dead-letter-topic"      # 死信队列主题
+
+  # 顺序消息配置
+  ordered:
+    # 指定分区数（实现顺序消息的关键）
+    partitions: 3
+    # 副本数
+    replication-factor: 1
+
+
+# Redis配置（用于幂等处理）
+redis:
+  host: localhost
+  port: 6379
+  password:
+  database: 0
+
+# 日志配置
+logging:
+  # 使用logback-spring.xml来自定义日志，注意：只要存在logback-spring.xml文件，则application.yml文件中logging配置就失效了！
+#  config: classpath:logback-spring.xml
+  level:
+    org.springframework.kafka: DEBUG
+    org.apache.kafka: WARN
+    com.example: DEBUG
+
+# 配置 Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: loggers,health,info  # 暴露 loggers 端点
+  endpoint:
+    loggers:
+      enabled: true

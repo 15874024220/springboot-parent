@@ -1,0 +1,9 @@
+# 开发环境配置
+spring:
+  kafka:
+    bootstrap-servers: localhost:9092
+
+logging:
+  level:
+    com.example: DEBUG
+
